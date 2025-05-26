@@ -453,7 +453,7 @@ module axi_mcast_demux #(
 
     // The "CollectivOpsConnectivity" Vector can mask out certain targets. E.g. for the Slaves they appear as a multicast capable target
     // however there are not and the data will not be forwarded.
-    assign slv_aw_select_colletiv_mask = slv_aw_select_mask & {1'b1, CollectivOpsConnectivity}; //
+    assign slv_aw_select_colletiv_mask = (aw_is_multicast) ? (slv_aw_select_mask & CollectivOpsConnectivity) : slv_aw_select_mask;
 
     // While there can be multiple outstanding write transactions, i.e. 
     // multiple AWs can be accepted before the corresponding Bs are returned,
