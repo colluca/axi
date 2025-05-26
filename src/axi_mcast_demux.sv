@@ -39,38 +39,40 @@
 /// Beats on the B and R channel are multiplexed from the master ports to the slave port with
 /// a round-robin arbitration tree.
 module axi_mcast_demux #(
-  parameter int unsigned AxiIdWidth     = 32'd0,
-  parameter bit          AtopSupport    = 1'b1,
-  parameter type         aw_addr_t      = logic,
-  parameter type         aw_chan_t      = logic,
-  parameter type         w_chan_t       = logic,
-  parameter type         b_chan_t       = logic,
-  parameter type         ar_chan_t      = logic,
-  parameter type         r_chan_t       = logic,
-  parameter type         axi_req_t      = logic,
-  parameter type         axi_resp_t     = logic,
-  parameter int unsigned NoMstPorts     = 32'd0,
+  parameter int unsigned          AxiIdWidth                = 32'd0,
+  parameter bit                   AtopSupport               = 1'b1,
+  parameter type                  aw_addr_t                 = logic,
+  parameter type                  aw_chan_t                 = logic,
+  parameter type                  w_chan_t                  = logic,
+  parameter type                  b_chan_t                  = logic,
+  parameter type                  ar_chan_t                 = logic,
+  parameter type                  r_chan_t                  = logic,
+  parameter type                  axi_req_t                 = logic,
+  parameter type                  axi_resp_t                = logic,
+  parameter int unsigned          NoMstPorts                = 32'd0,
   /// Connectivity vector
-  parameter bit [NoMstPorts-1:0] Connectivity = '1,
-  parameter int unsigned MaxTrans       = 32'd8,
-  parameter int unsigned AxiLookBits    = 32'd3,
-  parameter bit          UniqueIds      = 1'b0,
-  parameter bit          SpillAw        = 1'b1,
-  parameter bit          SpillW         = 1'b0,
-  parameter bit          SpillB         = 1'b0,
-  parameter bit          SpillAr        = 1'b1,
-  parameter bit          SpillR         = 1'b0,
-  parameter type         rule_t         = logic,
-  parameter int unsigned NoAddrRules    = 32'd0,
-  parameter int unsigned NoMulticastRules = 32'd0,
-  parameter int unsigned NoMulticastPorts = 32'd0,
-  parameter int unsigned MaxMcastTrans    = 32'd7,
+  parameter bit [NoMstPorts-1:0]  Connectivity              = '1,
+  /// Collective Operation Connectivity (to mask certain outputs for coll operations)
+  parameter bit [NoMstPorts-1:0]  CollectivOpsConnectivity  = '1,
+  parameter int unsigned          MaxTrans                  = 32'd8,
+  parameter int unsigned          AxiLookBits               = 32'd3,
+  parameter bit                   UniqueIds                 = 1'b0,
+  parameter bit                   SpillAw                   = 1'b1,
+  parameter bit                   SpillW                    = 1'b0,
+  parameter bit                   SpillB                    = 1'b0,
+  parameter bit                   SpillAr                   = 1'b1,
+  parameter bit                   SpillR                    = 1'b0,
+  parameter type                  rule_t                    = logic,
+  parameter int unsigned          NoAddrRules               = 32'd0,
+  parameter int unsigned          NoMulticastRules          = 32'd0,
+  parameter int unsigned          NoMulticastPorts          = 32'd0,
+  parameter int unsigned          MaxMcastTrans             = 32'd7,
   // Dependent parameters, DO NOT OVERRIDE!
-  parameter int unsigned DecodeIdxWidth = ((NoMstPorts - 1) > 32'd1) ? $clog2(NoMstPorts - 1) : 32'd1,
-  parameter int unsigned IdxSelectWidth = (NoMstPorts > 32'd1) ? $clog2(NoMstPorts) : 32'd1,
-  parameter type         decode_idx_t   = logic [DecodeIdxWidth-1:0],
-  parameter type         idx_select_t   = logic [IdxSelectWidth-1:0],
-  parameter type         mask_select_t  = logic [NoMstPorts-1:0]
+  parameter int unsigned          DecodeIdxWidth            = ((NoMstPorts - 1) > 32'd1) ? $clog2(NoMstPorts - 1) : 32'd1,
+  parameter int unsigned          IdxSelectWidth            = (NoMstPorts > 32'd1) ? $clog2(NoMstPorts) : 32'd1,
+  parameter type                  decode_idx_t              = logic [DecodeIdxWidth-1:0],
+  parameter type                  idx_select_t              = logic [IdxSelectWidth-1:0],
+  parameter type                  mask_select_t             = logic [NoMstPorts-1:0]
 ) (
   input  logic                       clk_i,
   input  logic                       rst_ni,
@@ -197,6 +199,7 @@ module axi_mcast_demux #(
     logic       [NoMstPorts-2:0]       dec_aw_select;
     aw_addr_t   [NoMstPorts-1:0]       slv_aw_addr, slv_aw_mask;
     mask_select_t                      slv_aw_select_mask;
+    mask_select_t                      slv_aw_select_colletiv_mask;
     idx_select_t                       slv_aw_select;
 
     // AW channel to slave ports
@@ -403,7 +406,7 @@ module axi_mcast_demux #(
           // This prevents deadlocking of the W channel. The counters are there for the
           // Handling of the B responses.
           if (slv_aw_valid &&
-                ((w_open == '0) || (w_select == slv_aw_select_mask)) &&
+                ((w_open == '0) || (w_select == slv_aw_select_colletiv_mask)) &&
                 (!aw_select_occupied || (slv_aw_select == lookup_aw_select)) &&
                 !multicast_stall) begin
             // connect the handshake
@@ -448,6 +451,10 @@ module axi_mcast_demux #(
         .popcount_o(aw_select_popcount)
     );
 
+    // The "CollectivOpsConnectivity" Vector can mask out certain targets. E.g. for the Slaves they appear as a multicast capable target
+    // however there are not and the data will not be forwarded.
+    assign slv_aw_select_colletiv_mask = slv_aw_select_mask & {1'b1, CollectivOpsConnectivity}; //
+
     // While there can be multiple outstanding write transactions, i.e. 
     // multiple AWs can be accepted before the corresponding Bs are returned,
     // in the case of multicast transactions this would require the need
@@ -471,7 +478,7 @@ module axi_mcast_demux #(
     // additional select signals.
     assign aw_is_multicast = aw_select_popcount > 1;
     assign outstanding_multicast = outstanding_mcast_cnt_q != '0;
-    assign multicast_stall = (outstanding_multicast && (slv_aw_select_mask != multicast_select_q)) ||
+    assign multicast_stall = (outstanding_multicast && (slv_aw_select_colletiv_mask != multicast_select_q)) ||
                              (aw_is_multicast && aw_any_outstanding_unicast_trx) ||
                              (outstanding_mcast_cnt_q == MaxMcastTrans);
     // We can send this signal to all slaves since we will only have one outstanding aw
@@ -492,8 +499,8 @@ module axi_mcast_demux #(
       // For the same reason the right hand side uses outstanding_mcast_cnt_d
       // instead of outstanding_mcast_cnt_q
       if (aw_is_multicast && aw_valid && aw_ready) begin
-        outstanding_mcast_cnt_d = outstanding_mcast_cnt_d + (|slv_aw_select_mask);
-        multicast_select_d      = slv_aw_select_mask;
+        outstanding_mcast_cnt_d = outstanding_mcast_cnt_d + (|slv_aw_select_colletiv_mask);
+        multicast_select_d      = slv_aw_select_colletiv_mask;
       end
       if (outstanding_multicast && slv_b_valid && slv_b_ready) begin
         outstanding_mcast_cnt_d = outstanding_mcast_cnt_d - 1;
@@ -536,10 +543,10 @@ module axi_mcast_demux #(
     // handshake can now actually take place.
     // Using commit, instead of valid, to this end ensures that we don't have
     // any combinational loops.
-    assign mst_aw_valids = {NoMstPorts{aw_valid}} & slv_aw_select_mask;
-    assign accept_aw = &((mst_aw_valids & mst_aw_readies) | ~slv_aw_select_mask);
+    assign mst_aw_valids = {NoMstPorts{aw_valid}} & slv_aw_select_colletiv_mask;
+    assign accept_aw = &((mst_aw_valids & mst_aw_readies) | ~slv_aw_select_colletiv_mask);
     assign aw_ready = aw_is_multicast ? mcast_aw_hs_in_progress : accept_aw;
-    assign mst_aw_commit_o = {NoMstPorts{mcast_aw_hs_in_progress}} & slv_aw_select_mask;
+    assign mst_aw_commit_o = {NoMstPorts{mcast_aw_hs_in_progress}} & slv_aw_select_colletiv_mask;
 
     if (UniqueIds) begin : gen_unique_ids_aw
       // If the `UniqueIds` parameter is set, each write transaction has an ID that is unique among
@@ -616,8 +623,8 @@ module axi_mcast_demux #(
       .overflow_o ( /*not used*/          )
     );
 
-    `FFLARN(w_select_q, slv_aw_select_mask, w_cnt_up, mask_select_t'(0), clk_i, rst_ni)
-    assign w_select       = (|w_open) ? w_select_q : slv_aw_select_mask;
+    `FFLARN(w_select_q, slv_aw_select_colletiv_mask, w_cnt_up, mask_select_t'(0), clk_i, rst_ni)
+    assign w_select       = (|w_open) ? w_select_q : slv_aw_select_colletiv_mask;
     assign w_select_valid = w_cnt_up | (|w_open);
     assign w_cnt_down     = slv_w_valid & slv_w_ready & slv_w_chan.last;
 

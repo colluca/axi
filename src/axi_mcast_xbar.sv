@@ -25,6 +25,8 @@ import cf_math_pkg::idx_width;
   parameter bit  ATOPs                                                = 1'b1,
   /// Connectivity matrix
   parameter bit [Cfg.NoSlvPorts-1:0][Cfg.NoMstPorts-1:0] Connectivity = '1,
+  /// Connectivity matrix for the collectiv operation
+  parameter bit [Cfg.NoSlvPorts-1:0][Cfg.NoMstPorts-1:0] CollectivOpsConnectivity = '1,
   /// AXI4+ATOP AW channel struct type for the slave ports.
   parameter type slv_aw_chan_t                                        = logic,
   /// AXI4+ATOP AW channel struct type for the master ports.
@@ -141,30 +143,31 @@ import cf_math_pkg::idx_width;
         mst_port_idx_t'(Cfg.NoMstPorts) : mst_port_idx_t'(dec_ar_select);
 
     axi_mcast_demux #(
-      .AxiIdWidth     ( Cfg.AxiIdWidthSlvPorts ),  // ID Width
-      .AtopSupport    ( ATOPs                  ),
-      .Connectivity   ( Connectivity[i]        ),
-      .aw_addr_t      ( addr_t                 ),  // AW Address Type
-      .aw_chan_t      ( slv_aw_chan_t          ),  // AW Channel Type
-      .w_chan_t       ( w_chan_t               ),  //  W Channel Type
-      .b_chan_t       ( slv_b_chan_t           ),  //  B Channel Type
-      .ar_chan_t      ( slv_ar_chan_t          ),  // AR Channel Type
-      .r_chan_t       ( slv_r_chan_t           ),  //  R Channel Type
-      .axi_req_t      ( slv_req_t              ),
-      .axi_resp_t     ( slv_resp_t             ),
-      .NoMstPorts     ( Cfg.NoMstPorts + 1     ),
-      .MaxTrans       ( Cfg.MaxMstTrans        ),
-      .AxiLookBits    ( Cfg.AxiIdUsedSlvPorts  ),
-      .UniqueIds      ( Cfg.UniqueIds          ),
-      .SpillAw        ( Cfg.LatencyMode[9]     ),
-      .SpillW         ( Cfg.LatencyMode[8]     ),
-      .SpillB         ( Cfg.LatencyMode[7]     ),
-      .SpillAr        ( Cfg.LatencyMode[6]     ),
-      .SpillR         ( Cfg.LatencyMode[5]     ),
-      .rule_t         ( rule_t                 ),
-      .NoAddrRules    ( Cfg.NoAddrRules        ),
-      .NoMulticastRules( Cfg.NoMulticastRules  ),
-      .NoMulticastPorts( Cfg.NoMulticastPorts  )
+      .AxiIdWidth               ( Cfg.AxiIdWidthSlvPorts      ),  // ID Width
+      .AtopSupport              ( ATOPs                       ),
+      .Connectivity             ( Connectivity[i]             ),
+      .CollectivOpsConnectivity ( CollectivOpsConnectivity[i] ),
+      .aw_addr_t                ( addr_t                      ),  // AW Address Type
+      .aw_chan_t                ( slv_aw_chan_t               ),  // AW Channel Type
+      .w_chan_t                 ( w_chan_t                    ),  //  W Channel Type
+      .b_chan_t                 ( slv_b_chan_t                ),  //  B Channel Type
+      .ar_chan_t                ( slv_ar_chan_t               ),  // AR Channel Type
+      .r_chan_t                 ( slv_r_chan_t                ),  //  R Channel Type
+      .axi_req_t                ( slv_req_t                   ),
+      .axi_resp_t               ( slv_resp_t                  ),
+      .NoMstPorts               ( Cfg.NoMstPorts + 1          ),
+      .MaxTrans                 ( Cfg.MaxMstTrans             ),
+      .AxiLookBits              ( Cfg.AxiIdUsedSlvPorts       ),
+      .UniqueIds                ( Cfg.UniqueIds               ),
+      .SpillAw                  ( Cfg.LatencyMode[9]          ),
+      .SpillW                   ( Cfg.LatencyMode[8]          ),
+      .SpillB                   ( Cfg.LatencyMode[7]          ),
+      .SpillAr                  ( Cfg.LatencyMode[6]          ),
+      .SpillR                   ( Cfg.LatencyMode[5]          ),
+      .rule_t                   ( rule_t                      ),
+      .NoAddrRules              ( Cfg.NoAddrRules             ),
+      .NoMulticastRules         ( Cfg.NoMulticastRules        ),
+      .NoMulticastPorts         ( Cfg.NoMulticastPorts        )
     ) i_axi_demux (
       .clk_i,   // Clock
       .rst_ni,  // Asynchronous reset active low
