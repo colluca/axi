@@ -365,7 +365,6 @@ module axi_mcast_demux #(
     end
 
     // Merge the signal between the multicast and the unicast
-    // TODO (raroth) What should happen if we have any error?
     always_comb begin
       // Set init values
       slv_aw_select_mask = '0;
@@ -377,12 +376,17 @@ module axi_mcast_demux #(
       if(slv_aw_chan.user.mcast == '0) begin : gen_unicast
         aw_is_multicast = 1'b0;
         slv_aw_select_mask = dec_aw_unicast_selected_out & Connectivity;
-        slv_aw_addr = {(NoMstPorts){slv_aw_chan.addr}};   // TODO (raroth) verify if this is correct?!?
+        slv_aw_addr = {(NoMstPorts){slv_aw_chan.addr}};
       end else begin : gen_multicast
         aw_is_multicast = 1'b1;
         slv_aw_select_mask = {{(NoMstPorts-NoMulticastPorts){1'b0}}, dec_aw_multicast_selected_out} & Connectivity;
-        slv_aw_addr = {'0, {(NoMstPorts-NoMulticastPorts){slv_aw_chan.addr}}, dec_aw_multicast_addr};   // TODO (raroth) verify if this is correct?!?
-        slv_aw_mask = {'0, dec_aw_multicast_mask};   // TODO (raroth) verify if this is correct?!?
+        slv_aw_addr = {'0, {(NoMstPorts-NoMulticastPorts){slv_aw_chan.addr}}, dec_aw_multicast_addr};
+        slv_aw_mask = {'0, dec_aw_multicast_mask};
+      end
+
+      // Overwrite the selection if we dedect an error > set the highest bit as these is the slave error
+      if(dec_aw_multicast_error && dec_aw_unicast_error) begin
+        slv_aw_select_mask = {1'b1, {(NoMstPorts-1){1'b0}}};
       end
     end
 
