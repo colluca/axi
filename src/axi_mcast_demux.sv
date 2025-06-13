@@ -338,7 +338,7 @@ module axi_mcast_demux #(
     assign dec_aw_unicast_selected_out = (1'b1 << dec_aw_unicast_selected_idx);
 
     // Provide the address decoding for the multicast case
-    if(NoMulticastRules > 0) begin : gen_multicast_decoding
+    if (NoMulticastRules > 0) begin : gen_multicast_decoding
       multiaddr_decode #(
         .NoIndices        (NoMulticastPorts),
         .NoRules          (NoMulticastRules),
@@ -372,8 +372,8 @@ module axi_mcast_demux #(
       slv_aw_mask = '0;
       aw_is_multicast = '0;
 
-      // check if the aw request was unicastor multicast
-      if(slv_aw_chan.user.mcast == '0) begin : gen_unicast
+      // decide if the aw request was unicast or multicast
+      if (slv_aw_chan.user.mcast == '0) begin : gen_unicast
         aw_is_multicast = 1'b0;
         slv_aw_select_mask = dec_aw_unicast_selected_out & Connectivity;
         slv_aw_addr = {(NoMstPorts){slv_aw_chan.addr}};
@@ -385,7 +385,7 @@ module axi_mcast_demux #(
       end
 
       // Overwrite the selection if we dedect an error > set the highest bit as these is the slave error
-      if(dec_aw_multicast_error && dec_aw_unicast_error) begin
+      if (dec_aw_multicast_error && dec_aw_unicast_error) begin
         slv_aw_select_mask = {1'b1, {(NoMstPorts-1){1'b0}}};
       end
     end
