@@ -377,7 +377,7 @@ module axi_mcast_demux #(
 
       if (slv_aw_chan.user.mcast == '0) begin
         aw_is_multicast = 1'b0;
-        slv_aw_addr = {(NoMstPorts){slv_aw_chan.addr}};
+        slv_aw_addr = {NoMstPorts{slv_aw_chan.addr}};
         if (dec_aw_unicast_error) begin
           slv_aw_select_mask = select_error_slave;
         end else begin
@@ -390,7 +390,7 @@ module axi_mcast_demux #(
         if (dec_aw_multicast_error) begin
           slv_aw_select_mask = select_error_slave;
         end else begin
-          slv_aw_select_mask = {{(NoMstPorts-NoMulticastPorts){1'b0}}, dec_aw_multicast_selected_out} & CollectiveOpsConnectivity;
+          slv_aw_select_mask = {'0, dec_aw_multicast_selected_out} & CollectiveOpsConnectivity;
         end
       end
     end
