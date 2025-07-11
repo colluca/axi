@@ -39,38 +39,38 @@
 /// Beats on the B and R channel are multiplexed from the master ports to the slave port with
 /// a round-robin arbitration tree.
 module axi_mcast_demux #(
-  parameter int unsigned          AxiIdWidth                = 32'd0,
-  parameter bit                   AtopSupport               = 1'b1,
-  parameter type                  aw_addr_t                 = logic,
-  parameter type                  aw_chan_t                 = logic,
-  parameter type                  w_chan_t                  = logic,
-  parameter type                  b_chan_t                  = logic,
-  parameter type                  ar_chan_t                 = logic,
-  parameter type                  r_chan_t                  = logic,
-  parameter type                  axi_req_t                 = logic,
-  parameter type                  axi_resp_t                = logic,
-  parameter int unsigned          NoMstPorts                = 32'd0,
+  parameter int unsigned         AxiIdWidth                = 32'd0,
+  parameter bit                  AtopSupport               = 1'b1,
+  parameter type                 aw_addr_t                 = logic,
+  parameter type                 aw_chan_t                 = logic,
+  parameter type                 w_chan_t                  = logic,
+  parameter type                 b_chan_t                  = logic,
+  parameter type                 ar_chan_t                 = logic,
+  parameter type                 r_chan_t                  = logic,
+  parameter type                 axi_req_t                 = logic,
+  parameter type                 axi_resp_t                = logic,
+  parameter int unsigned         NoMstPorts                = 32'd0,
   /// Connectivity vector
-  parameter bit [NoMstPorts-1:0]  Connectivity              = '1,
+  parameter bit [NoMstPorts-1:0] Connectivity              = '1,
   /// Collective Operation Connectivity (to mask certain outputs for coll operations)
-  parameter bit [NoMstPorts-1:0]  CollectiveOpsConnectivity = '1,
-  parameter int unsigned          MaxTrans                  = 32'd8,
-  parameter int unsigned          AxiLookBits               = 32'd3,
-  parameter bit                   UniqueIds                 = 1'b0,
-  parameter bit                   SpillAw                   = 1'b1,
-  parameter bit                   SpillW                    = 1'b0,
-  parameter bit                   SpillB                    = 1'b0,
-  parameter bit                   SpillAr                   = 1'b1,
-  parameter bit                   SpillR                    = 1'b0,
-  parameter type                  rule_t                    = logic,
-  parameter int unsigned          NoAddrRules               = 32'd0,
-  parameter int unsigned          NoMulticastRules          = 32'd0,
-  parameter int unsigned          NoMulticastPorts          = 32'd0,
-  parameter int unsigned          MaxMcastTrans             = 32'd7,
+  parameter bit [NoMstPorts-1:0] CollectiveOpsConnectivity = '1,
+  parameter int unsigned         MaxTrans                  = 32'd8,
+  parameter int unsigned         AxiLookBits               = 32'd3,
+  parameter bit                  UniqueIds                 = 1'b0,
+  parameter bit                  SpillAw                   = 1'b1,
+  parameter bit                  SpillW                    = 1'b0,
+  parameter bit                  SpillB                    = 1'b0,
+  parameter bit                  SpillAr                   = 1'b1,
+  parameter bit                  SpillR                    = 1'b0,
+  parameter type                 rule_t                    = logic,
+  parameter int unsigned         NoAddrRules               = 32'd0,
+  parameter int unsigned         NoMulticastRules          = 32'd0,
+  parameter int unsigned         NoMulticastPorts          = 32'd0,
+  parameter int unsigned         MaxMcastTrans             = 32'd7,
   // Dependent parameters, DO NOT OVERRIDE!
-  parameter int unsigned          IdxSelectWidth            = (NoMstPorts > 32'd1) ? $clog2(NoMstPorts) : 32'd1,
-  parameter type                  idx_select_t              = logic [IdxSelectWidth-1:0],
-  parameter type                  mask_select_t             = logic [NoMstPorts-1:0]
+  parameter int unsigned         IdxSelectWidth            = (NoMstPorts > 32'd1) ? $clog2(NoMstPorts) : 32'd1,
+  parameter type                 idx_select_t              = logic [IdxSelectWidth-1:0],
+  parameter type                 mask_select_t             = logic [NoMstPorts-1:0]
 ) (
   input  logic                       clk_i,
   input  logic                       rst_ni,
@@ -187,24 +187,24 @@ module axi_mcast_demux #(
     logic                      slv_aw_ready;
 
     // AW address decoder
-    mask_rule_t [NoMulticastRules-1:0]  multicast_rules;
-    mask_rule_t                         default_rule;
+    mask_rule_t [NoMulticastRules-1:0] multicast_rules;
+    mask_rule_t                        default_rule;
 
-    idx_select_t                        dec_aw_unicast_selected_idx;
-    logic [NoMstPorts-1:0]              dec_aw_unicast_selected_out;
-    logic                               dec_aw_unicast_valid;
-    logic                               dec_aw_unicast_error;
+    idx_select_t                       dec_aw_unicast_selected_idx;
+    logic [NoMstPorts-1:0]             dec_aw_unicast_selected_out;
+    logic                              dec_aw_unicast_valid;
+    logic                              dec_aw_unicast_error;
 
-    logic [NoMulticastPorts-1:0]        dec_aw_multicast_selected_out;
-    aw_addr_t [NoMulticastPorts-1:0]    dec_aw_multicast_addr;
-    aw_addr_t [NoMulticastPorts-1:0]    dec_aw_multicast_mask;
-    logic                               dec_aw_multicast_valid;
-    logic                               dec_aw_multicast_error;
+    logic [NoMulticastPorts-1:0]       dec_aw_multicast_selected_out;
+    aw_addr_t [NoMulticastPorts-1:0]   dec_aw_multicast_addr;
+    aw_addr_t [NoMulticastPorts-1:0]   dec_aw_multicast_mask;
+    logic                              dec_aw_multicast_valid;
+    logic                              dec_aw_multicast_error;
 
-    aw_addr_t [NoMstPorts-1:0]          slv_aw_addr;
-    aw_addr_t [NoMstPorts-1:0]          slv_aw_mask;
-    mask_select_t                       slv_aw_select_mask;
-    idx_select_t                        slv_aw_select;
+    aw_addr_t [NoMstPorts-1:0]         slv_aw_addr;
+    aw_addr_t [NoMstPorts-1:0]         slv_aw_mask;
+    mask_select_t                      slv_aw_select_mask;
+    idx_select_t                       slv_aw_select;
 
     // AW channel to slave ports
     logic [NoMstPorts-1:0]    mst_aw_valids, mst_aw_readies;
