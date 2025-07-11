@@ -317,7 +317,7 @@ module axi_mcast_demux #(
     assign default_rule.mask = default_mst_port_i.end_addr - default_mst_port_i.start_addr - 1;
     assign default_rule.addr = default_mst_port_i.start_addr;
 
-    // Provide the address decoding for the unicast case
+    // Address decoding for unicast requests
     addr_decode #(
       .NoIndices          (NoMstPorts),
       .NoRules            (NoAddrRules),
@@ -333,10 +333,10 @@ module axi_mcast_demux #(
       .default_idx_i      (idx_select_t'(default_mst_port_i.idx))
     );
 
-    // Generate the outmask from the idx
+    // Generate the output mask from the index
     assign dec_aw_unicast_selected_out = (1'b1 << dec_aw_unicast_selected_idx);
 
-    // Provide the address decoding for the multicast case
+    // Address decoding for multicast requests
     if (NoMulticastRules > 0) begin : gen_multicast_decoding
       multiaddr_decode #(
         .NoIndices        (NoMulticastPorts),
@@ -355,7 +355,7 @@ module axi_mcast_demux #(
         .en_default_idx_i (en_default_mst_port_i),
         .default_idx_i    (default_rule)
       );
-    end else begin
+    end else begin : gen_no_multicast_decoding
       assign dec_aw_multicast_selected_out = '0;
       assign dec_aw_multicast_addr = '0;
       assign dec_aw_multicast_mask = '0;
@@ -363,27 +363,25 @@ module axi_mcast_demux #(
       assign dec_aw_multicast_error = '0;
     end
 
-    // Merge the signal between the multicast and the unicast
+    // Mux the multicast and unicast decoding outputs
     always_comb begin
-      // Set init values
       slv_aw_select_mask = '0;
       slv_aw_addr = '0;
       slv_aw_mask = '0;
       aw_is_multicast = '0;
 
-      // decide if the aw request was unicast or multicast
-      if (slv_aw_chan.user.mcast == '0) begin : gen_unicast
+      if (slv_aw_chan.user.mcast == '0) begin
         aw_is_multicast = 1'b0;
         slv_aw_select_mask = dec_aw_unicast_selected_out & Connectivity;
         slv_aw_addr = {(NoMstPorts){slv_aw_chan.addr}};
-      end else begin : gen_multicast
+      end else begin
         aw_is_multicast = 1'b1;
         slv_aw_select_mask = {{(NoMstPorts-NoMulticastPorts){1'b0}}, dec_aw_multicast_selected_out} & CollectiveOpsConnectivity;
         slv_aw_addr = {'0, {(NoMstPorts-NoMulticastPorts){slv_aw_chan.addr}}, dec_aw_multicast_addr};
         slv_aw_mask = {'0, dec_aw_multicast_mask};
       end
 
-      // Overwrite the selection if we dedect an error > set the highest bit as these is the slave error
+      // Overwrite the selection if we detect an error > set the highest bit as these is the slave error
       if (dec_aw_multicast_error && dec_aw_unicast_error) begin
         slv_aw_select_mask = {1'b1, {(NoMstPorts-1){1'b0}}};
       end
