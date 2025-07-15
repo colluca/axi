@@ -347,7 +347,7 @@ module axi_mcast_demux #(
       ) i_axi_aw_multicast_decode (
         .addr_map_i       (multicast_rules),
         .addr_i           (slv_aw_chan.addr),
-        .mask_i           (slv_aw_chan.user.mcast),
+        .mask_i           (slv_aw_chan.user.collective_mask),
         .select_o         (dec_aw_multicast_selected_out),
         .addr_o           (dec_aw_multicast_addr),
         .mask_o           (dec_aw_multicast_mask),
@@ -375,7 +375,7 @@ module axi_mcast_demux #(
       slv_aw_addr = '0;
       slv_aw_mask = '0;
 
-      if (slv_aw_chan.user.mcast == '0) begin
+      if (slv_aw_chan.user.collective_mask == '0) begin
         slv_aw_addr = {NoMstPorts{slv_aw_chan.addr}};
         if (dec_aw_unicast_error) begin
           slv_aw_select_mask = select_error_slave;
@@ -918,10 +918,10 @@ module axi_mcast_demux #(
 
       for (int unsigned i = 0; i < NoMstPorts; i++) begin
         // AW channel
-        mst_reqs_o[i].aw            = slv_aw_chan;
-        mst_reqs_o[i].aw.addr       = slv_aw_addr[i];
-        mst_reqs_o[i].aw.user.mcast = slv_aw_mask[i];
-        mst_reqs_o[i].aw_valid      = mst_aw_valids[i];
+        mst_reqs_o[i].aw                      = slv_aw_chan;
+        mst_reqs_o[i].aw.addr                 = slv_aw_addr[i];
+        mst_reqs_o[i].aw.user.collective_mask = slv_aw_mask[i];
+        mst_reqs_o[i].aw_valid                = mst_aw_valids[i];
 
         //  W channel
         mst_reqs_o[i].w       = slv_w_chan;

@@ -344,9 +344,9 @@ import cf_math_pkg::idx_width;
   typedef logic [Cfg.AxiDataWidth       -1:0] data_t;
   typedef logic [Cfg.AxiDataWidth/8     -1:0] strb_t;
   typedef logic [AXI_USER_WIDTH         -1:0] user_t;
-  // AW channel adds multicast mask to USER signals
+  // AW channel adds collective mask to USER signals
   typedef struct packed {
-    addr_t mcast;
+    addr_t collective_mask;
   } aw_user_t;
 
   `AXI_TYPEDEF_AW_CHAN_T(mst_aw_chan_t, addr_t, id_mst_t, aw_user_t)
