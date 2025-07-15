@@ -334,6 +334,7 @@ package tb_axi_mcast_xbar_pkg;
         incr_conducted_tests(4);
 
         // push the required w beats into the right fifo
+        $display("        Expect %0d W beats.", slaves_axi[i].aw_len + 1);
         incr_expected_tests(slaves_axi[i].aw_len + 1);
         for (int unsigned j = 0; j <= slaves_axi[i].aw_len; j++) begin
           exp_slv_w = (j == slaves_axi[i].aw_len) ?
@@ -440,7 +441,7 @@ package tb_axi_mcast_xbar_pkg;
           incr_expected_tests(1);
         end
         // push the required r beats into the right fifo
-          $display("        Expect R response, len: %0d.", masters_axi[i].ar_len);
+          $display("        Expect R response, len: %0d.", mst_axi_len);
           for (int unsigned j = 0; j <= mst_axi_len; j++) begin
           exp_mst_r = (j == mst_axi_len) ? '{mst_axi_id: mst_axi_id, last: 1'b1} :
                                            '{mst_axi_id: mst_axi_id, last: 1'b0};
