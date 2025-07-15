@@ -221,6 +221,7 @@ module axi_mcast_demux #(
     logic                     multicast_stall;
     mask_select_t             multicast_select_q, multicast_select_d;
     mcast_cnt_t               outstanding_mcast_cnt_q, outstanding_mcast_cnt_d;
+    logic [$clog2(NoMstPorts)+1-1:0] aw_select_popcount;
     logic                     accept_aw;
     logic                     mcast_aw_hs_in_progress;
 
@@ -373,10 +374,8 @@ module axi_mcast_demux #(
       slv_aw_select_mask = '0;
       slv_aw_addr = '0;
       slv_aw_mask = '0;
-      aw_is_multicast = '0;
 
       if (slv_aw_chan.user.mcast == '0) begin
-        aw_is_multicast = 1'b0;
         slv_aw_addr = {NoMstPorts{slv_aw_chan.addr}};
         if (dec_aw_unicast_error) begin
           slv_aw_select_mask = select_error_slave;
@@ -384,7 +383,6 @@ module axi_mcast_demux #(
           slv_aw_select_mask = dec_aw_unicast_selected_out & Connectivity;
         end
       end else begin
-        aw_is_multicast = 1'b1;
         slv_aw_addr = {'0, {(NoMstPorts-NoMulticastPorts){slv_aw_chan.addr}}, dec_aw_multicast_addr};
         slv_aw_mask = {'0, dec_aw_multicast_mask};
         if (dec_aw_multicast_error) begin
@@ -473,6 +471,12 @@ module axi_mcast_demux #(
         .bin   (slv_aw_select)
     );
 
+    // Popcount to identify multicast requests
+    popcount #(NoMstPorts) i_aw_select_popcount (
+        .data_i    (slv_aw_select_mask),
+        .popcount_o(aw_select_popcount)
+    );
+
     // While there can be multiple outstanding write transactions, i.e. 
     // multiple AWs can be accepted before the corresponding Bs are returned,
     // in the case of multicast transactions this would require the need
@@ -494,6 +498,7 @@ module axi_mcast_demux #(
     // We can slightly loosen this constraint, in the case of successive multicast
     // requests going to the same slaves. In this case, we don't need to buffer any
     // additional select signals.
+    assign aw_is_multicast = aw_select_popcount > 1;
     assign outstanding_multicast = outstanding_mcast_cnt_q != '0;
     assign multicast_stall = (outstanding_multicast && (slv_aw_select_mask != multicast_select_q)) ||
                              (aw_is_multicast && aw_any_outstanding_unicast_trx) ||
