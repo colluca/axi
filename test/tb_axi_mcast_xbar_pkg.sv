@@ -588,6 +588,9 @@ package tb_axi_mcast_xbar_pkg;
       if (tests_conducted < tests_expected) begin
         $error("Some of the expected tests were not conducted!");
       end
+      if (tests_conducted > tests_expected) begin
+        $error("Conducted more than the expected tests!");
+      end
     endtask : print_result
   endclass : axi_mcast_xbar_monitor
 endpackage
