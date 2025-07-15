@@ -187,57 +187,70 @@ package tb_axi_mcast_xbar_pkg;
         // Get address information from request
         aw_addr = masters_axi[i].aw_addr;
         aw_mcast = masters_axi[i].aw_user[AxiAddrWidth-1:0];
-        for (int k = 0; k < AxiAddrWidth; k++)
-          aw_addr_masked[k] = aw_mcast[k] ? 1'bx : aw_addr[k];
-        $display("Trying to match: %b", aw_addr_masked);
 
-        // Compare request against each multicast rule. We look at the rules starting from the
-        // last ones. In case of multiple rules matching for the same slave, we want only
-        // the last rule to have effect
-        for (int j = (NoMulticastRules - 1); j >= 0; j--) begin
+        // Set decode error by default, reset if a rule is matched in the following
+        decerr = 1;
 
-          // Convert address rule to mask (NAPOT) form
-          rule_mask = AddrMap[j].end_addr - AddrMap[j].start_addr - 1;
-          rule_addr = AddrMap[j].start_addr;
+        // When a mask is present, multicast rules are used, otherwise the unicast rules are used.
+        if (aw_mcast != '0) begin
+
+          // Log masked address
           for (int k = 0; k < AxiAddrWidth; k++)
-            addrmap_masked[k] = rule_mask[k] ? 1'bx : rule_addr[k];
-          $display("With slave %3d : %b", AddrMap[j].idx, addrmap_masked);
+            aw_addr_masked[k] = aw_mcast[k] ? 1'bx : aw_addr[k];
+          $display("Trying to match: %b", aw_addr_masked);
 
-          // Request goes to the slave if all bits match, out of those which are neither masked
-          // in the request nor in the addrmap rule
-          if (&(~(aw_addr ^ rule_addr) | rule_mask | aw_mcast)) begin
-            int unsigned slave_idx = AddrMap[j].idx;
+          // Compare request against each multicast rule. We look at the rules starting from the
+          // last ones. In case of multiple rules matching for the same slave, we want only
+          // the last rule to have effect
+          for (int j = (NoMulticastRules - 1); j >= 0; j--) begin
 
-            // Only push the request if we haven't already matched it with a previous rule
-            // for the same slave
-            if (!matched_slaves[slave_idx]) begin
-              matched_slaves[slave_idx] = 1'b1;
-              to_slave_idx.push_back(slave_idx);
-              mask_to_slave.push_back(aw_mcast & rule_mask);
-              addr_to_slave.push_back((~aw_mcast & aw_addr) | (aw_mcast & rule_addr));
-              $display("  Push mask    : %32b", aw_mcast & rule_mask);
-              $display("  Push address : %32b", (~aw_mcast & aw_addr) | (aw_mcast & rule_addr));
+            // Convert address rule to mask (NAPOT) form
+            rule_mask = AddrMap[j].end_addr - AddrMap[j].start_addr - 1;
+            rule_addr = AddrMap[j].start_addr;
+            for (int k = 0; k < AxiAddrWidth; k++)
+              addrmap_masked[k] = rule_mask[k] ? 1'bx : rule_addr[k];
+            $display("With slave %3d : %b", AddrMap[j].idx, addrmap_masked);
+
+            // Request goes to the slave if all bits match, out of those which are neither masked
+            // in the request nor in the addrmap rule
+            if (&(~(aw_addr ^ rule_addr) | rule_mask | aw_mcast)) begin
+              int unsigned slave_idx = AddrMap[j].idx;
+              decerr = 0;
+
+              // Only push the request if we haven't already matched it with a previous rule
+              // for the same slave
+              if (!matched_slaves[slave_idx]) begin
+                matched_slaves[slave_idx] = 1'b1;
+                to_slave_idx.push_back(slave_idx);
+                mask_to_slave.push_back(aw_mcast & rule_mask);
+                addr_to_slave.push_back((~aw_mcast & aw_addr) | (aw_mcast & rule_addr));
+                $display("  Push mask    : %32b", aw_mcast & rule_mask);
+                $display("  Push address : %32b", (~aw_mcast & aw_addr) | (aw_mcast & rule_addr));
+              end
             end
           end
-        end
+        
+        end else begin
 
-        // Compare request against each interval-form rule. We look at the rules starting from
-        // the last ones. We ignore the case of multiple rules matching for the same slave
-        // (as is the case in tb_mcast_xbar_pkg.sv)
-        $display("Trying to match: %x", aw_addr);
-        for (int j = (NoAddrRules - 1); j >= NoMulticastRules; j--) begin
-          $display("With slave %3d : [%x, %x)", AddrMap[j].idx, AddrMap[j].start_addr, AddrMap[j].end_addr);
-          if ((aw_addr >= AddrMap[j].start_addr) &&
-              (aw_addr < AddrMap[j].end_addr)) begin
-            to_slave_idx.push_back(AddrMap[j].idx);
-            addr_to_slave.push_back(aw_addr);
-            mask_to_slave.push_back('0);
-            $display("  Push address : %x", aw_addr);
+          // Compare request against each interval-form rule. We look at the rules starting from
+          // the last ones. We ignore the case of multiple rules matching for the same slave
+          // (as is the case in tb_mcast_xbar_pkg.sv)
+          $display("Trying to match: %x", aw_addr);
+          for (int j = (NoAddrRules - 1); j >= 0; j--) begin
+            $display("With slave %3d : [%x, %x)", AddrMap[j].idx, AddrMap[j].start_addr, AddrMap[j].end_addr);
+            if ((aw_addr >= AddrMap[j].start_addr) &&
+                (aw_addr < AddrMap[j].end_addr)) begin
+              decerr = 0;
+              to_slave_idx.push_back(AddrMap[j].idx);
+              addr_to_slave.push_back(aw_addr);
+              mask_to_slave.push_back('0);
+              $display("  Push address : %x", aw_addr);
+            end
           end
+
         end
 
         num_slaves_matched = to_slave_idx.size();
-        decerr = num_slaves_matched == 0;
 
         // send the exp aw beats down into the queues of the selected slaves 
         // when no decerror
