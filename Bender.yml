@@ -88,6 +88,7 @@ sources:
   - src/axi_demux.sv
   - src/axi_lite_xbar.sv
   - src/axi_mcast_xbar_unmuxed.sv
+  - src/axi_to_apb.sv
   - src/axi_to_mem_interleaved.sv
   - src/axi_to_mem_split.sv
   # Level 5
@@ -141,6 +142,7 @@ sources:
       - test/tb_axi_lite_regs.sv
       - test/tb_axi_iw_converter.sv
       - test/tb_axi_lite_to_apb.sv
+      - test/tb_axi_to_apb.sv
       - test/tb_axi_lite_to_axi.sv
       - test/tb_axi_lite_xbar.sv
       - test/tb_axi_mcast_xbar.sv
